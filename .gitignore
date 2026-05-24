@@ -1,0 +1,16 @@
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+.DS_Store
+.idea/
+*.iml
+.vscode/
+.env
+.env.*
+!.env.example
+**/application-local.yml
+**/application-secrets.yml
+docker-compose.override.yml

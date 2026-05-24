@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: stockiq
+      POSTGRES_USER: stockiq
+      POSTGRES_PASSWORD: stockiq_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stockiq"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+
+  eureka:
+    image: springcloud/eureka
+    ports:
+      - "8761:8761"
+    environment:
+      - eureka.client.register-with-eureka=false
+      - eureka.client.fetch-registry=false
+
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/stockiq
+      DB_USER: stockiq
+      DB_PASSWORD: stockiq_dev
+      EUREKA_URI: http://eureka:8761/eureka
+      JWT_SECRET: stockiq-local-dev-secret-key-min-32chars
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka:
+        condition: service_started
+
+  market-data-service:
+    build: ./market-data-service
+    ports:
+      - "8082:8082"
+    environment:
+      REDIS_HOST: redis
+      EUREKA_URI: http://eureka:8761/eureka
+      ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY:-demo}
+    depends_on:
+      redis:
+        condition: service_healthy
+      eureka:
+        condition: service_started
+
+  portfolio-service:
+    build: ./portfolio-service
+    ports:
+      - "8083:8083"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/stockiq
+      DB_USER: stockiq
+      DB_PASSWORD: stockiq_dev
+      EUREKA_URI: http://eureka:8761/eureka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka:
+        condition: service_started
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_URI: http://eureka:8761/eureka
+      JWT_SECRET: stockiq-local-dev-secret-key-min-32chars
+    depends_on:
+      - auth-service
+      - market-data-service
+      - portfolio-service
+
+volumes:
+  pgdata:

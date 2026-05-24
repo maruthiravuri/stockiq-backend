@@ -1,0 +1,134 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  JAVA_VERSION: '21'
+  AWS_REGION: us-west-2
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-west-2.amazonaws.com
+
+jobs:
+
+  # ── Build & Test ─────────────────────────────────────────────────────────────
+  build-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: stockiq_test
+          POSTGRES_USER: stockiq
+          POSTGRES_PASSWORD: stockiq_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+
+      - name: Build & Run Tests
+        run: mvn clean verify -B
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/stockiq_test
+          DB_USER: stockiq
+          DB_PASSWORD: stockiq_test
+          JWT_SECRET: test-secret-key-minimum-32-characters-long
+
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: '**/target/surefire-reports/*.xml'
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  # ── Docker Build & Push ───────────────────────────────────────────────────────
+  docker-push:
+    name: Docker Build & Push
+    needs: build-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    strategy:
+      matrix:
+        service: [api-gateway, auth-service, market-data-service, portfolio-service]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tag
+        id: tag
+        run: |
+          BRANCH=${GITHUB_REF##*/}
+          SHA=${GITHUB_SHA::8}
+          echo "tag=${BRANCH}-${SHA}" >> $GITHUB_OUTPUT
+
+      - name: Build & Push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.service }}
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/stockiq-${{ matrix.service }}:${{ steps.tag.outputs.tag }}
+            ${{ env.ECR_REGISTRY }}/stockiq-${{ matrix.service }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── Deploy to ECS (main branch only) ──────────────────────────────────────────
+  deploy-ecs:
+    name: Deploy to ECS
+    needs: docker-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Force ECS service deployments
+        run: |
+          for svc in api-gateway auth-service market-data-service portfolio-service; do
+            aws ecs update-service \
+              --cluster stockiq-cluster \
+              --service stockiq-${svc} \
+              --force-new-deployment \
+              --region ${{ env.AWS_REGION }}
+            echo "Triggered deployment: stockiq-${svc}"
+          done
