@@ -4,6 +4,9 @@ server:
 spring:
   application:
     name: market-data-service
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:${REDIS_HOST:localhost}}

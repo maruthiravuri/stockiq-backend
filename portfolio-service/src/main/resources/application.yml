@@ -4,6 +4,9 @@ server:
 spring:
   application:
     name: portfolio-service
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   datasource:
     url: ${SPRING_DATASOURCE_URL:${DB_URL:jdbc:postgresql://localhost:5432/stockiq}}
     username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:stockiq}}
@@ -21,6 +24,8 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    repair-on-migrate: true
+    out-of-order: false
 
 eureka:
   client:
