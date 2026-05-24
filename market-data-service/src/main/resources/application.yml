@@ -24,6 +24,8 @@ eureka:
       defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
 
 market:
+  finnhub:
+    api-key: ${FINNHUB_API_KEY:#{null}}
   alpha-vantage:
     api-key: ${ALPHA_VANTAGE_API_KEY:demo}
     base-url: https://www.alphavantage.co

@@ -1,6 +1,6 @@
 package com.stockiq.market.service;
 
-import com.stockiq.market.client.AlphaVantageClient;
+import com.stockiq.market.client.MarketDataClient;
 import com.stockiq.market.dto.QuoteDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +19,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class QuoteBroadcastService {
 
     private final SimpMessagingTemplate messagingTemplate;
-    private final AlphaVantageClient alphaVantageClient;
+    private final MarketDataClient marketDataClient;
 
     private final Map<String, List<String>> subscriptions = new ConcurrentHashMap<>();
 
@@ -40,7 +40,7 @@ public class QuoteBroadcastService {
     public void broadcastDefaultQuotes() {
         DEFAULT_SYMBOLS.parallelStream().forEach(symbol -> {
             try {
-                QuoteDto quote = alphaVantageClient.getQuote(symbol);
+                QuoteDto quote = marketDataClient.getQuote(symbol);
                 messagingTemplate.convertAndSend("/topic/quotes/" + symbol, quote);
             } catch (Exception e) {
                 // Normal when no WebSocket clients are connected - use debug level
@@ -55,7 +55,7 @@ public class QuoteBroadcastService {
         subscriptions.forEach((sessionId, symbols) ->
                 symbols.parallelStream().forEach(symbol -> {
                     try {
-                        QuoteDto quote = alphaVantageClient.getQuote(symbol);
+                        QuoteDto quote = marketDataClient.getQuote(symbol);
                         messagingTemplate.convertAndSendToUser(sessionId, "/queue/quotes", quote);
                     } catch (Exception e) {
                         log.debug("Broadcast to {} skipped: {}", sessionId, e.getMessage());

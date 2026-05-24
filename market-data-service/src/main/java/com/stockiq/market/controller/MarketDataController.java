@@ -1,6 +1,6 @@
 package com.stockiq.market.controller;
 
-import com.stockiq.market.client.AlphaVantageClient;
+import com.stockiq.market.client.MarketDataClient;
 import com.stockiq.market.dto.QuoteDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -15,17 +15,17 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MarketDataController {
 
-    private final AlphaVantageClient alphaVantageClient;
+    private final MarketDataClient marketDataClient;
 
     @GetMapping("/quote/{symbol}")
     public ResponseEntity<QuoteDto> getQuote(@PathVariable String symbol) {
-        return ResponseEntity.ok(alphaVantageClient.getQuote(symbol.toUpperCase()));
+        return ResponseEntity.ok(marketDataClient.getQuote(symbol.toUpperCase()));
     }
 
     @GetMapping("/quotes")
     public ResponseEntity<List<QuoteDto>> getBatchQuotes(@RequestParam List<String> symbols) {
         List<QuoteDto> quotes = symbols.parallelStream()
-                .map(s -> alphaVantageClient.getQuote(s.toUpperCase()))
+                .map(s -> marketDataClient.getQuote(s.toUpperCase()))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(quotes);
     }

@@ -71,6 +71,7 @@ services:
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY:-demo}
+      FINNHUB_API_KEY: ${FINNHUB_API_KEY:-}
       EUREKA_CLIENT_ENABLED: "false"
       SERVER_PORT: 8082
     depends_on:
