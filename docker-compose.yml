@@ -1,6 +1,6 @@
 services:
 
-  # ── Infrastructure ────────────────────────────────────────────────────────
+  # ── Infrastructure ─────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     container_name: stockiq-postgres
@@ -29,11 +29,11 @@ services:
       timeout: 3s
       retries: 10
 
-  # ── Services ──────────────────────────────────────────────────────────────
+  # ── Services (build from repo root so parent pom.xml is in context) ────────
   auth-service:
     build:
-      context: ./auth-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: auth-service/Dockerfile
     container_name: stockiq-auth
     ports:
       - "8081:8081"
@@ -53,12 +53,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 30s
+      start_period: 60s
 
   market-data-service:
     build:
-      context: ./market-data-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: market-data-service/Dockerfile
     container_name: stockiq-market
     ports:
       - "8082:8082"
@@ -77,12 +77,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 30s
+      start_period: 60s
 
   portfolio-service:
     build:
-      context: ./portfolio-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: portfolio-service/Dockerfile
     container_name: stockiq-portfolio
     ports:
       - "8083:8083"
@@ -101,31 +101,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 30s
+      start_period: 60s
 
   api-gateway:
     build:
-      context: ./api-gateway
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: api-gateway/Dockerfile
     container_name: stockiq-gateway
     ports:
       - "8080:8080"
     environment:
       JWT_SECRET: stockiq-local-dev-secret-key-32chars!!
       EUREKA_CLIENT_ENABLED: "false"
-      # Static routes (no Eureka discovery)
-      SPRING_CLOUD_GATEWAY_ROUTES_0_ID: auth-service
-      SPRING_CLOUD_GATEWAY_ROUTES_0_URI: http://auth-service:8081
-      SPRING_CLOUD_GATEWAY_ROUTES_0_PREDICATES_0: Path=/api/v1/auth/**
-      SPRING_CLOUD_GATEWAY_ROUTES_1_ID: market-data-service
-      SPRING_CLOUD_GATEWAY_ROUTES_1_URI: http://market-data-service:8082
-      SPRING_CLOUD_GATEWAY_ROUTES_1_PREDICATES_0: Path=/api/v1/market/**
-      SPRING_CLOUD_GATEWAY_ROUTES_2_ID: portfolio-service
-      SPRING_CLOUD_GATEWAY_ROUTES_2_URI: http://portfolio-service:8083
-      SPRING_CLOUD_GATEWAY_ROUTES_2_PREDICATES_0: Path=/api/v1/portfolio/**
-      SPRING_CLOUD_GATEWAY_ROUTES_3_ID: market-data-ws
-      SPRING_CLOUD_GATEWAY_ROUTES_3_URI: ws://market-data-service:8082
-      SPRING_CLOUD_GATEWAY_ROUTES_3_PREDICATES_0: Path=/ws/**
+      AUTH_SERVICE_URI: http://auth-service:8081
+      MARKET_DATA_SERVICE_URI: http://market-data-service:8082
+      PORTFOLIO_SERVICE_URI: http://portfolio-service:8083
+      MARKET_DATA_WS_URI: ws://market-data-service:8082
     depends_on:
       auth-service:
         condition: service_healthy
