@@ -24,6 +24,9 @@ eureka:
       defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
 
 market:
+  alpaca:
+    api-key: ${ALPACA_API_KEY:#{null}}
+    api-secret: ${ALPACA_API_SECRET:#{null}}
   finnhub:
     api-key: ${FINNHUB_API_KEY:#{null}}
   alpha-vantage:

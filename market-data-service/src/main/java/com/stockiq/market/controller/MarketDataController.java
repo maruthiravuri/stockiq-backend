@@ -7,8 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/market")
@@ -17,6 +15,12 @@ public class MarketDataController {
 
     private final MarketDataClient marketDataClient;
 
+    private static final List<String> MAG7 =
+        List.of("AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA");
+
+    private static final List<String> CRYPTO =
+        List.of("BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD", "ADAUSD");
+
     @GetMapping("/quote/{symbol}")
     public ResponseEntity<QuoteDto> getQuote(@PathVariable String symbol) {
         return ResponseEntity.ok(marketDataClient.getQuote(symbol.toUpperCase()));
@@ -24,24 +28,31 @@ public class MarketDataController {
 
     @GetMapping("/quotes")
     public ResponseEntity<List<QuoteDto>> getBatchQuotes(@RequestParam List<String> symbols) {
-        List<QuoteDto> quotes = symbols.parallelStream()
-                .map(s -> marketDataClient.getQuote(s.toUpperCase()))
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(quotes);
+        // Use batch endpoint — single API call to Alpaca for all symbols
+        return ResponseEntity.ok(marketDataClient.getBatchQuotes(
+            symbols.stream().map(String::toUpperCase).toList()
+        ));
     }
 
     @GetMapping("/mag7")
     public ResponseEntity<List<QuoteDto>> getMag7() {
-        return getBatchQuotes(List.of("AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA"));
-    }
-
-    @GetMapping("/watchlist")
-    public ResponseEntity<List<QuoteDto>> getWatchlist(@RequestParam List<String> symbols) {
-        return getBatchQuotes(symbols);
+        return ResponseEntity.ok(marketDataClient.getBatchQuotes(MAG7));
     }
 
     @GetMapping("/crypto")
     public ResponseEntity<List<QuoteDto>> getCrypto() {
-        return getBatchQuotes(List.of("BTC", "ETH", "BNB", "SOL", "XRP"));
+        return ResponseEntity.ok(marketDataClient.getBatchQuotes(CRYPTO));
+    }
+
+    @GetMapping("/watchlist")
+    public ResponseEntity<List<QuoteDto>> getWatchlist(@RequestParam List<String> symbols) {
+        return ResponseEntity.ok(marketDataClient.getBatchQuotes(
+            symbols.stream().map(String::toUpperCase).toList()
+        ));
+    }
+
+    @GetMapping("/health")
+    public ResponseEntity<String> health() {
+        return ResponseEntity.ok("OK");
     }
 }
