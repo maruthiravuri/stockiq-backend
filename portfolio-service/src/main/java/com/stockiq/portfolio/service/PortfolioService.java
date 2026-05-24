@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -141,7 +142,7 @@ public class PortfolioService {
     }
 
     private List<AllocationSlice> groupAndSlice(List<Holding> holdings,
-            java.util.function.Function<Holding, String> keyFn, BigDecimal total) {
+            Function<Holding, String> keyFn, BigDecimal total) {
         Map<String, BigDecimal> grouped = new LinkedHashMap<>();
         holdings.forEach(h -> {
             BigDecimal v = h.getCurrentPrice().multiply(h.getQuantity());
