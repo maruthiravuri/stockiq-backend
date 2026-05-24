@@ -43,7 +43,7 @@ public class AuthService {
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest req) {
         User user = userRepository
-                .findByEmailOrUsername(req.usernameOrEmail(), req.usernameOrEmail())
+                .findByIdentifier(req.usernameOrEmail())
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
         if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {

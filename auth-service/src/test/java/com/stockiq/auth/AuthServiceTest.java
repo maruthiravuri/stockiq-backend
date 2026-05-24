@@ -88,7 +88,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("login — wrong password throws BadCredentialsException")
     void login_wrongPassword_throws() {
-        when(userRepository.findByEmailOrUsername(anyString(), anyString()))
+        when(userRepository.findByIdentifier(anyString()))
                 .thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
 
@@ -100,7 +100,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("login — unknown user throws BadCredentialsException")
     void login_unknownUser_throws() {
-        when(userRepository.findByEmailOrUsername(anyString(), anyString()))
+        when(userRepository.findByIdentifier(anyString()))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> authService.login(
@@ -112,7 +112,7 @@ class AuthServiceTest {
     @DisplayName("login — disabled account throws BadCredentialsException")
     void login_disabledAccount_throws() {
         testUser.setEnabled(false);
-        when(userRepository.findByEmailOrUsername(anyString(), anyString()))
+        when(userRepository.findByIdentifier(anyString()))
                 .thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
 
@@ -125,7 +125,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("login — success returns auth response with user info")
     void login_success() {
-        when(userRepository.findByEmailOrUsername(anyString(), anyString()))
+        when(userRepository.findByIdentifier(anyString()))
                 .thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
         when(jwtService.generateAccessToken(any())).thenReturn("access.token");

@@ -1,9 +1,12 @@
 package com.stockiq.market;
 
+import com.stockiq.market.service.QuoteBroadcastService;
 import io.restassured.RestAssured;
 import org.junit.jupiter.api.*;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import static io.restassured.RestAssured.*;
@@ -14,7 +17,16 @@ import static org.hamcrest.Matchers.*;
 @DisplayName("Market Data API — RestAssured Integration Tests")
 class MarketDataControllerRestAssuredTest {
 
-    @LocalServerPort int port;
+    @LocalServerPort
+    int port;
+
+    // Mock WebSocket messaging to avoid SimpMessagingTemplate context failure
+    @MockBean
+    SimpMessagingTemplate messagingTemplate;
+
+    // Mock the broadcast service to prevent @Scheduled methods running in tests
+    @MockBean
+    QuoteBroadcastService quoteBroadcastService;
 
     @BeforeEach
     void setUp() {
@@ -75,7 +87,7 @@ class MarketDataControllerRestAssuredTest {
     }
 
     @Test
-    @DisplayName("GET /quote/{symbol} — unknown symbol still returns 200 with fallback")
+    @DisplayName("GET /quote/{symbol} — unknown symbol returns fallback with price > 0")
     void getQuote_unknownSymbol_returnsFallback() {
         given()
                 .header("X-User-Id", "test-user")

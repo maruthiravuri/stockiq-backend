@@ -8,6 +8,10 @@ spring:
   cache:
     type: simple
 
+# Disable WebSocket message broker in tests by providing minimal config
+  main:
+    web-application-type: servlet
+
 eureka:
   client:
     enabled: false
@@ -32,3 +36,8 @@ resilience4j:
 logging:
   level:
     com.stockiq: WARN
+
+# Disable scheduling in tests to avoid SimpMessagingTemplate startup issues
+task:
+  scheduling:
+    enabled: false
