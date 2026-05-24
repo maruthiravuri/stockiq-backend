@@ -2,8 +2,10 @@ version: '3.8'
 
 services:
 
+  # ── Infrastructure ────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
+    container_name: stockiq-postgres
     environment:
       POSTGRES_DB: stockiq
       POSTGRES_USER: stockiq
@@ -14,82 +16,126 @@ services:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U stockiq"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   redis:
     image: redis:7-alpine
+    container_name: stockiq-redis
     ports:
       - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
-  eureka:
-    image: springcloud/eureka
-    ports:
-      - "8761:8761"
-    environment:
-      - eureka.client.register-with-eureka=false
-      - eureka.client.fetch-registry=false
-
+  # ── Services ──────────────────────────────────────────────────────────────
   auth-service:
-    build: ./auth-service
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: stockiq-auth
     ports:
       - "8081:8081"
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/stockiq
-      DB_USER: stockiq
-      DB_PASSWORD: stockiq_dev
-      EUREKA_URI: http://eureka:8761/eureka
-      JWT_SECRET: stockiq-local-dev-secret-key-min-32chars
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/stockiq
+      SPRING_DATASOURCE_USERNAME: stockiq
+      SPRING_DATASOURCE_PASSWORD: stockiq_dev
+      JWT_SECRET: stockiq-local-dev-secret-key-32chars!!
+      EUREKA_CLIENT_ENABLED: "false"
+      SERVER_PORT: 8081
     depends_on:
       postgres:
         condition: service_healthy
-      eureka:
-        condition: service_started
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8081/api/v1/auth/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   market-data-service:
-    build: ./market-data-service
+    build:
+      context: ./market-data-service
+      dockerfile: Dockerfile
+    container_name: stockiq-market
     ports:
       - "8082:8082"
     environment:
-      REDIS_HOST: redis
-      EUREKA_URI: http://eureka:8761/eureka
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
       ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY:-demo}
+      EUREKA_CLIENT_ENABLED: "false"
+      SERVER_PORT: 8082
     depends_on:
       redis:
         condition: service_healthy
-      eureka:
-        condition: service_started
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8082/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   portfolio-service:
-    build: ./portfolio-service
+    build:
+      context: ./portfolio-service
+      dockerfile: Dockerfile
+    container_name: stockiq-portfolio
     ports:
       - "8083:8083"
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/stockiq
-      DB_USER: stockiq
-      DB_PASSWORD: stockiq_dev
-      EUREKA_URI: http://eureka:8761/eureka
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/stockiq
+      SPRING_DATASOURCE_USERNAME: stockiq
+      SPRING_DATASOURCE_PASSWORD: stockiq_dev
+      EUREKA_CLIENT_ENABLED: "false"
+      SERVER_PORT: 8083
     depends_on:
       postgres:
         condition: service_healthy
-      eureka:
-        condition: service_started
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8083/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   api-gateway:
-    build: ./api-gateway
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: stockiq-gateway
     ports:
       - "8080:8080"
     environment:
-      EUREKA_URI: http://eureka:8761/eureka
-      JWT_SECRET: stockiq-local-dev-secret-key-min-32chars
+      JWT_SECRET: stockiq-local-dev-secret-key-32chars!!
+      EUREKA_CLIENT_ENABLED: "false"
+      # Static routes (no Eureka discovery)
+      SPRING_CLOUD_GATEWAY_ROUTES_0_ID: auth-service
+      SPRING_CLOUD_GATEWAY_ROUTES_0_URI: http://auth-service:8081
+      SPRING_CLOUD_GATEWAY_ROUTES_0_PREDICATES_0: Path=/api/v1/auth/**
+      SPRING_CLOUD_GATEWAY_ROUTES_1_ID: market-data-service
+      SPRING_CLOUD_GATEWAY_ROUTES_1_URI: http://market-data-service:8082
+      SPRING_CLOUD_GATEWAY_ROUTES_1_PREDICATES_0: Path=/api/v1/market/**
+      SPRING_CLOUD_GATEWAY_ROUTES_2_ID: portfolio-service
+      SPRING_CLOUD_GATEWAY_ROUTES_2_URI: http://portfolio-service:8083
+      SPRING_CLOUD_GATEWAY_ROUTES_2_PREDICATES_0: Path=/api/v1/portfolio/**
+      SPRING_CLOUD_GATEWAY_ROUTES_3_ID: market-data-ws
+      SPRING_CLOUD_GATEWAY_ROUTES_3_URI: ws://market-data-service:8082
+      SPRING_CLOUD_GATEWAY_ROUTES_3_PREDICATES_0: Path=/ws/**
     depends_on:
-      - auth-service
-      - market-data-service
-      - portfolio-service
+      auth-service:
+        condition: service_healthy
+      market-data-service:
+        condition: service_healthy
+      portfolio-service:
+        condition: service_healthy
+    restart: on-failure
 
 volumes:
   pgdata:

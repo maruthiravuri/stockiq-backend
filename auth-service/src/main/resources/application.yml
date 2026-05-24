@@ -1,16 +1,17 @@
 server:
-  port: 8081
+  port: ${SERVER_PORT:8081}
 
 spring:
   application:
     name: auth-service
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/stockiq}
-    username: ${DB_USER:stockiq}
-    password: ${DB_PASSWORD:stockiq_dev}
+    url: ${SPRING_DATASOURCE_URL:${DB_URL:jdbc:postgresql://localhost:5432/stockiq}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:stockiq}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:stockiq_dev}}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
+      connection-timeout: 10000
   jpa:
     hibernate:
       ddl-auto: validate
@@ -18,13 +19,13 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
   flyway:
     enabled: true
     locations: classpath:db/migration
 
 eureka:
   client:
+    enabled: ${EUREKA_CLIENT_ENABLED:true}
     serviceUrl:
       defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
   instance:
@@ -42,9 +43,4 @@ management:
         include: health,info,prometheus
   endpoint:
     health:
-      show-details: when-authorized
-
-logging:
-  level:
-    com.stockiq: DEBUG
-    org.springframework.security: INFO
+      show-details: always

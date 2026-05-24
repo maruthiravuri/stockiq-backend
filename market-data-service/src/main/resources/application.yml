@@ -1,21 +1,22 @@
 server:
-  port: 8082
+  port: ${SERVER_PORT:8082}
 
 spring:
   application:
     name: market-data-service
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+      host: ${SPRING_DATA_REDIS_HOST:${REDIS_HOST:localhost}}
+      port: ${SPRING_DATA_REDIS_PORT:${REDIS_PORT:6379}}
       password: ${REDIS_PASSWORD:}
   cache:
     type: redis
     redis:
-      time-to-live: 30000  # 30s for quotes
+      time-to-live: 30000
 
 eureka:
   client:
+    enabled: ${EUREKA_CLIENT_ENABLED:true}
     serviceUrl:
       defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
 
@@ -37,10 +38,12 @@ resilience4j:
       alphaVantage:
         maxAttempts: 3
         waitDuration: 1s
-        exponentialBackoffMultiplier: 2
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info,prometheus,circuitbreakers
+  endpoint:
+    health:
+      show-details: always

@@ -1,15 +1,16 @@
 server:
-  port: 8083
+  port: ${SERVER_PORT:8083}
 
 spring:
   application:
     name: portfolio-service
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/stockiq}
-    username: ${DB_USER:stockiq}
-    password: ${DB_PASSWORD:stockiq_dev}
+    url: ${SPRING_DATASOURCE_URL:${DB_URL:jdbc:postgresql://localhost:5432/stockiq}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:stockiq}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:stockiq_dev}}
     hikari:
       maximum-pool-size: 10
+      minimum-idle: 2
   jpa:
     hibernate:
       ddl-auto: validate
@@ -23,11 +24,17 @@ spring:
 
 eureka:
   client:
+    enabled: ${EUREKA_CLIENT_ENABLED:true}
     serviceUrl:
       defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
+  instance:
+    preferIpAddress: true
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
