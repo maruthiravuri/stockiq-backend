@@ -14,7 +14,6 @@ CREATE TABLE holdings (
     name           VARCHAR(200) NOT NULL,
     quantity       NUMERIC(15,4) NOT NULL CHECK (quantity > 0),
     avg_cost_basis NUMERIC(15,4) NOT NULL CHECK (avg_cost_basis > 0),
-    current_price  NUMERIC(15,4) NOT NULL DEFAULT 0 CHECK (current_price >= 0),
     sector         VARCHAR(50)  NOT NULL,
     asset_type     VARCHAR(20)  NOT NULL,
     purchase_date  DATE         NOT NULL,

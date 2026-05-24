@@ -44,7 +44,6 @@ services:
       JWT_SECRET: stockiq-local-dev-secret-key-32chars!!
       EUREKA_CLIENT_ENABLED: "false"
       SERVER_PORT: 8081
-      SPRING_FLYWAY_REPAIR_ON_MIGRATE: "true"
     depends_on:
       postgres:
         condition: service_healthy
@@ -93,7 +92,6 @@ services:
       SPRING_DATASOURCE_PASSWORD: stockiq_dev
       EUREKA_CLIENT_ENABLED: "false"
       SERVER_PORT: 8083
-      SPRING_FLYWAY_REPAIR_ON_MIGRATE: "true"
     depends_on:
       postgres:
         condition: service_healthy

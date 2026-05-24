@@ -24,8 +24,6 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
-    repair-on-migrate: true
-    out-of-order: false
 
 eureka:
   client:
