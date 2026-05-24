@@ -14,8 +14,8 @@ CREATE TABLE users (
 CREATE INDEX idx_users_email    ON users(email);
 CREATE INDEX idx_users_username ON users(username);
 
--- Seed admin user (password: Admin@123)
+-- Seed admin user (password: Admin@123, bcrypt 10 rounds, $2a$ Spring-compatible)
 INSERT INTO users (email, username, password_hash, role)
 VALUES ('admin@stockiq.com', 'admin',
-        '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/VK2FKPYae',
+        '$2a$10$.cZApRs/4sHcvy41LCRyV.znF3ubydLfsKxThxFjFk5vpQWT8HZo2',
         'ADMIN');
