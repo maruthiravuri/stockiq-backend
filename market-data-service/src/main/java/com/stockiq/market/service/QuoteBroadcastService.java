@@ -43,20 +43,22 @@ public class QuoteBroadcastService {
                 QuoteDto quote = alphaVantageClient.getQuote(symbol);
                 messagingTemplate.convertAndSend("/topic/quotes/" + symbol, quote);
             } catch (Exception e) {
-                log.warn("Failed to broadcast quote for {}: {}", symbol, e.getMessage());
+                // Normal when no WebSocket clients are connected - use debug level
+                log.debug("Broadcast skipped for {} (no subscribers): {}", symbol, e.getMessage());
             }
         });
     }
 
     @Scheduled(fixedDelay = 5000)
     public void broadcastSubscriberQuotes() {
+        if (subscriptions.isEmpty()) return; // skip entirely if no subscribers
         subscriptions.forEach((sessionId, symbols) ->
                 symbols.parallelStream().forEach(symbol -> {
                     try {
                         QuoteDto quote = alphaVantageClient.getQuote(symbol);
                         messagingTemplate.convertAndSendToUser(sessionId, "/queue/quotes", quote);
                     } catch (Exception e) {
-                        log.warn("Failed to broadcast to {}: {}", sessionId, e.getMessage());
+                        log.debug("Broadcast to {} skipped: {}", sessionId, e.getMessage());
                     }
                 }));
     }
