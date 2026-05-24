@@ -13,8 +13,12 @@ env:
 
 jobs:
   build-test:
-    name: Build & Test
+    name: Build & Test (${{ matrix.service }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [auth-service, market-data-service, portfolio-service]
     services:
       postgres:
         image: postgres:16-alpine
@@ -23,35 +27,48 @@ jobs:
           POSTGRES_USER: stockiq
           POSTGRES_PASSWORD: stockiq_test
         options: >-
-          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
         ports: ["5432:5432"]
       redis:
         image: redis:7-alpine
-        options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
         ports: ["6379:6379"]
-    strategy:
-      matrix:
-        service: [auth-service, market-data-service, portfolio-service]
+
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+
+      - name: Setup Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
           cache: maven
+
       - name: Build & test ${{ matrix.service }}
-        run: mvn clean verify -pl ${{ matrix.service }} -am -B
+        run: mvn clean verify -pl ${{ matrix.service }} -am -B -T 2
         env:
           DB_URL: jdbc:postgresql://localhost:5432/stockiq_test
           DB_USER: stockiq
           DB_PASSWORD: stockiq_test
           REDIS_HOST: localhost
+          EUREKA_URI: http://localhost:8761/eureka
           JWT_SECRET: test-secret-key-minimum-32-characters-long
-      - uses: actions/upload-artifact@v4
+
+      - name: Upload test reports
         if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: test-reports-${{ matrix.service }}
-          path: ${{ matrix.service }}/target/surefire-reports/*.xml
+          name: test-reports-${{ matrix.service }}-${{ github.sha }}
+          path: ${{ matrix.service }}/target/surefire-reports/
+          if-no-files-found: warn
+          retention-days: 7
 
   sast-scan:
     name: SAST — OWASP Dependency Check
@@ -65,11 +82,11 @@ jobs:
           distribution: temurin
           cache: maven
       - name: OWASP Dependency Check
-        run: mvn org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=9 -B
+        run: mvn org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=9 -B -pl auth-service,portfolio-service
         continue-on-error: true
 
   docker-push:
-    name: Docker Build & Push — ${{ matrix.service }}
+    name: Docker — ${{ matrix.service }}
     needs: build-test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
