@@ -51,17 +51,18 @@ jobs:
           distribution: temurin
           cache: maven
 
-      - name: Install parent POM (without building child modules)
+      - name: Install parent POM (skip child modules)
         run: mvn install -N -B -q
 
       - name: Build & test ${{ matrix.service }}
-        run: mvn clean verify -pl ${{ matrix.service }} -B
+        working-directory: ${{ matrix.service }}
+        run: mvn clean verify -B
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/stockiq_test
           SPRING_DATASOURCE_USERNAME: stockiq
           SPRING_DATASOURCE_PASSWORD: stockiq_test
           SPRING_DATA_REDIS_HOST: localhost
-          EUREKA_CLIENT_ENABLED: "false"
+          EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://localhost:8761/eureka
           JWT_SECRET: test-secret-key-minimum-32-characters-long
 
       - name: Upload test reports
@@ -87,7 +88,8 @@ jobs:
       - name: Install parent POM
         run: mvn install -N -B -q
       - name: OWASP Dependency Check
-        run: mvn org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=9 -B -pl auth-service
+        working-directory: auth-service
+        run: mvn org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=9 -B
         continue-on-error: true
 
   docker-push:
@@ -129,8 +131,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-      - name: Deploy to ECS staging
-        run: |
+      - run: |
           for svc in api-gateway auth-service market-data-service portfolio-service notification-service; do
             aws ecs update-service --cluster stockiq-staging --service stockiq-${svc} --force-new-deployment
           done
@@ -147,8 +148,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-      - name: Deploy to ECS production
-        run: |
+      - run: |
           for svc in api-gateway auth-service market-data-service portfolio-service notification-service; do
             aws ecs update-service --cluster stockiq-prod --service stockiq-${svc} --force-new-deployment
           done
