@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: portfolio-service-test
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+eureka:
+  client:
+    enabled: false
+
+logging:
+  level:
+    com.stockiq: WARN
+    org.springframework.security: WARN

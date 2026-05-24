@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: market-data-service-test
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+  cache:
+    type: simple
+
+eureka:
+  client:
+    enabled: false
+
+market:
+  alpha-vantage:
+    api-key: demo
+    base-url: https://www.alphavantage.co
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      alphaVantage:
+        slidingWindowSize: 5
+        failureRateThreshold: 100
+        waitDurationInOpenState: 1s
+  retry:
+    instances:
+      alphaVantage:
+        maxAttempts: 1
+
+logging:
+  level:
+    com.stockiq: WARN

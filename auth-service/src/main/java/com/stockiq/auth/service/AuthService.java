@@ -28,7 +28,6 @@ public class AuthService {
         if (userRepository.existsByUsername(req.username())) {
             throw new IllegalArgumentException("Username already taken");
         }
-
         User user = User.builder()
                 .email(req.email())
                 .username(req.username())
@@ -36,7 +35,6 @@ public class AuthService {
                 .role(User.Role.ANALYST)
                 .enabled(true)
                 .build();
-
         user = userRepository.save(user);
         log.info("Registered new user: {}", user.getEmail());
         return buildAuthResponse(user);
@@ -54,7 +52,6 @@ public class AuthService {
         if (!user.isEnabled()) {
             throw new BadCredentialsException("Account disabled");
         }
-
         log.info("User logged in: {}", user.getEmail());
         return buildAuthResponse(user);
     }
@@ -73,7 +70,11 @@ public class AuthService {
                 jwtService.generateRefreshToken(user),
                 "Bearer",
                 jwtService.getAccessTokenExpiry() / 1000,
-                new UserInfo(user.getId().toString(), user.getEmail(), user.getUsername(), user.getRole().name())
+                new UserInfo(
+                        user.getId().toString(),
+                        user.getEmail(),
+                        user.getUsername(),
+                        user.getRole().name())
         );
     }
 }

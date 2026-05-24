@@ -73,4 +73,17 @@ class MarketDataControllerRestAssuredTest {
                 .statusCode(200)
                 .body("size()", equalTo(5));
     }
+
+    @Test
+    @DisplayName("GET /quote/{symbol} — unknown symbol still returns 200 with fallback")
+    void getQuote_unknownSymbol_returnsFallback() {
+        given()
+                .header("X-User-Id", "test-user")
+                .header("X-User-Role", "ANALYST")
+                .when().get("/quote/ZZZZ")
+                .then()
+                .statusCode(200)
+                .body("symbol", equalTo("ZZZZ"))
+                .body("price", greaterThan(0f));
+    }
 }

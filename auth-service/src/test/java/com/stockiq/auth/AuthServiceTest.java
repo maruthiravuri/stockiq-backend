@@ -16,6 +16,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -35,6 +36,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         testUser = User.builder()
+                .id(UUID.randomUUID())
                 .email("test@stockiq.com")
                 .username("testuser")
                 .passwordHash("$2a$12$hashedpassword")
@@ -44,7 +46,7 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("register - success creates user and returns tokens")
+    @DisplayName("register — success creates user and returns tokens")
     void register_success() {
         when(userRepository.existsByEmail(anyString())).thenReturn(false);
         when(userRepository.existsByUsername(anyString())).thenReturn(false);
@@ -54,8 +56,8 @@ class AuthServiceTest {
         when(jwtService.generateRefreshToken(any())).thenReturn("refresh.token.here");
         when(jwtService.getAccessTokenExpiry()).thenReturn(900000L);
 
-        var req = new RegisterRequest("test@stockiq.com", "testuser", "Password1!");
-        AuthResponse response = authService.register(req);
+        AuthResponse response = authService.register(
+                new RegisterRequest("test@stockiq.com", "testuser", "Password1!"));
 
         assertThat(response.accessToken()).isEqualTo("access.token.here");
         assertThat(response.tokenType()).isEqualTo("Bearer");
@@ -63,29 +65,65 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("register - duplicate email throws exception")
+    @DisplayName("register — duplicate email throws IllegalArgumentException")
     void register_duplicateEmail_throws() {
         when(userRepository.existsByEmail("test@stockiq.com")).thenReturn(true);
-        var req = new RegisterRequest("test@stockiq.com", "testuser", "Password1!");
-        assertThatThrownBy(() -> authService.register(req))
+        assertThatThrownBy(() -> authService.register(
+                new RegisterRequest("test@stockiq.com", "testuser", "Password1!")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Email already registered");
     }
 
     @Test
-    @DisplayName("login - wrong password throws BadCredentialsException")
+    @DisplayName("register — duplicate username throws IllegalArgumentException")
+    void register_duplicateUsername_throws() {
+        when(userRepository.existsByEmail(anyString())).thenReturn(false);
+        when(userRepository.existsByUsername("testuser")).thenReturn(true);
+        assertThatThrownBy(() -> authService.register(
+                new RegisterRequest("new@stockiq.com", "testuser", "Password1!")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Username already taken");
+    }
+
+    @Test
+    @DisplayName("login — wrong password throws BadCredentialsException")
     void login_wrongPassword_throws() {
         when(userRepository.findByEmailOrUsername(anyString(), anyString()))
                 .thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
 
-        var req = new LoginRequest("testuser", "wrongpassword");
-        assertThatThrownBy(() -> authService.login(req))
+        assertThatThrownBy(() -> authService.login(
+                new LoginRequest("testuser", "wrongpassword")))
                 .isInstanceOf(BadCredentialsException.class);
     }
 
     @Test
-    @DisplayName("login - success returns auth response")
+    @DisplayName("login — unknown user throws BadCredentialsException")
+    void login_unknownUser_throws() {
+        when(userRepository.findByEmailOrUsername(anyString(), anyString()))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.login(
+                new LoginRequest("nobody", "Password1!")))
+                .isInstanceOf(BadCredentialsException.class);
+    }
+
+    @Test
+    @DisplayName("login — disabled account throws BadCredentialsException")
+    void login_disabledAccount_throws() {
+        testUser.setEnabled(false);
+        when(userRepository.findByEmailOrUsername(anyString(), anyString()))
+                .thenReturn(Optional.of(testUser));
+        when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.login(
+                new LoginRequest("testuser", "Password1!")))
+                .isInstanceOf(BadCredentialsException.class)
+                .hasMessageContaining("disabled");
+    }
+
+    @Test
+    @DisplayName("login — success returns auth response with user info")
     void login_success() {
         when(userRepository.findByEmailOrUsername(anyString(), anyString()))
                 .thenReturn(Optional.of(testUser));
@@ -94,10 +132,11 @@ class AuthServiceTest {
         when(jwtService.generateRefreshToken(any())).thenReturn("refresh.token");
         when(jwtService.getAccessTokenExpiry()).thenReturn(900000L);
 
-        var req = new LoginRequest("testuser", "Password1!");
-        AuthResponse response = authService.login(req);
+        AuthResponse response = authService.login(
+                new LoginRequest("testuser", "Password1!"));
 
         assertThat(response).isNotNull();
         assertThat(response.user().username()).isEqualTo("testuser");
+        assertThat(response.user().role()).isEqualTo("ANALYST");
     }
 }
