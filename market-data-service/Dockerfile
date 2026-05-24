@@ -14,7 +14,7 @@ WORKDIR /build/market-data-service
 RUN mvn package -DskipTests -q
 
 FROM eclipse-temurin:21-jre-alpine
-RUN addgroup -S stockiq && adduser -S stockiq -G stockiq
+RUN apk add --no-cache curl &&     addgroup -S stockiq && adduser -S stockiq -G stockiq
 WORKDIR /app
 COPY --from=builder /build/market-data-service/target/*.jar app.jar
 USER stockiq
