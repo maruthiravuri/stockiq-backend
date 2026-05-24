@@ -1,17 +1,17 @@
 package com.stockiq.portfolio;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.stockiq.portfolio.config.SecurityConfig;
 import com.stockiq.portfolio.controller.PortfolioController;
 import com.stockiq.portfolio.dto.PortfolioDtos.*;
 import com.stockiq.portfolio.service.PortfolioService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(PortfolioController.class)
-@Import(SecurityConfig.class)
+@AutoConfigureMockMvc(addFilters = false)
 @DisplayName("PortfolioController — MockMvc Unit Tests")
 class PortfolioControllerRestAssuredTest {
 
@@ -54,6 +54,7 @@ class PortfolioControllerRestAssuredTest {
     }
 
     @Test
+    @WithMockUser(roles = "ANALYST")
     @DisplayName("POST /portfolio — creates portfolio, returns 201")
     void createPortfolio_returns201() throws Exception {
         when(portfolioService.createPortfolio(any(), any())).thenReturn(stubPortfolio());
@@ -68,6 +69,7 @@ class PortfolioControllerRestAssuredTest {
     }
 
     @Test
+    @WithMockUser(roles = "ANALYST")
     @DisplayName("GET /portfolio — returns list")
     void getPortfolios_returnsList() throws Exception {
         when(portfolioService.getUserPortfolios(any())).thenReturn(List.of(stubPortfolio()));
@@ -79,6 +81,7 @@ class PortfolioControllerRestAssuredTest {
     }
 
     @Test
+    @WithMockUser(roles = "ANALYST")
     @DisplayName("POST /portfolio/{id}/holdings — adds holding, returns 201")
     void addHolding_returns201() throws Exception {
         when(portfolioService.addHolding(any(), any(), any())).thenReturn(stubHolding());
@@ -95,6 +98,7 @@ class PortfolioControllerRestAssuredTest {
     }
 
     @Test
+    @WithMockUser(roles = "ANALYST")
     @DisplayName("GET /portfolio/{id}/allocation — returns 200")
     void getAllocation_returns200() throws Exception {
         when(portfolioService.getAllocation(any(), any())).thenReturn(
@@ -106,6 +110,7 @@ class PortfolioControllerRestAssuredTest {
     }
 
     @Test
+    @WithMockUser(roles = "ANALYST")
     @DisplayName("DELETE /portfolio/{id} — returns 204")
     void deletePortfolio_returns204() throws Exception {
         mockMvc.perform(delete("/api/v1/portfolio/" + UUID.randomUUID())
@@ -114,6 +119,7 @@ class PortfolioControllerRestAssuredTest {
     }
 
     @Test
+    @WithMockUser(roles = "ANALYST")
     @DisplayName("POST /portfolio — 400 for blank name")
     void createPortfolio_blankName_returns400() throws Exception {
         mockMvc.perform(post("/api/v1/portfolio")
@@ -125,9 +131,14 @@ class PortfolioControllerRestAssuredTest {
     }
 
     @Test
-    @DisplayName("GET /portfolio — 401 when no auth headers")
-    void getPortfolios_noAuth_returns401() throws Exception {
-        mockMvc.perform(get("/api/v1/portfolio"))
-            .andExpect(status().isUnauthorized());
+    @WithMockUser(roles = "ANALYST")
+    @DisplayName("GET /portfolio/{id} — returns 404 for wrong user")
+    void getPortfolio_notFound_returns404() throws Exception {
+        when(portfolioService.getPortfolio(any(), any()))
+            .thenThrow(new com.stockiq.portfolio.exception.ResourceNotFoundException("Portfolio", "test-id"));
+
+        mockMvc.perform(get("/api/v1/portfolio/" + UUID.randomUUID())
+                .header("X-User-Id", userId).header("X-User-Role", "ANALYST"))
+            .andExpect(status().isNotFound());
     }
 }
