@@ -47,6 +47,8 @@ services:
       SPRING_FLYWAY_VALIDATEONMIGRATE: "false"
       SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "false"
       SPRING_FLYWAY_TABLE: flyway_schema_history_auth
+      SPRING_FLYWAY_BASELINEONMIGRATE: "true"
+      SPRING_FLYWAY_BASELINEVERSION: "0"
     depends_on:
       postgres:
         condition: service_healthy
@@ -98,6 +100,8 @@ services:
       SPRING_FLYWAY_VALIDATEONMIGRATE: "false"
       SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "false"
       SPRING_FLYWAY_TABLE: flyway_schema_history_portfolio
+      SPRING_FLYWAY_BASELINEONMIGRATE: "true"
+      SPRING_FLYWAY_BASELINEVERSION: "0"
     depends_on:
       postgres:
         condition: service_healthy
