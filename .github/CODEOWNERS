@@ -1,0 +1,23 @@
+# StockIQ Backend — Code Owners
+
+# Global owner
+* @maruthiravuri
+
+# CI/CD and infra
+/.github/                  @maruthiravuri
+/docker-compose.yml        @maruthiravuri
+
+# API Gateway (security-sensitive)
+/api-gateway/              @maruthiravuri
+
+# Auth service (security-sensitive)
+/auth-service/             @maruthiravuri
+
+# Market data service
+/market-data-service/      @maruthiravuri
+
+# Portfolio service
+/portfolio-service/        @maruthiravuri
+
+# Notification service
+/notification-service/     @maruthiravuri
