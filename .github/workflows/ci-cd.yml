@@ -51,14 +51,17 @@ jobs:
           distribution: temurin
           cache: maven
 
+      - name: Install parent POM (without building child modules)
+        run: mvn install -N -B -q
+
       - name: Build & test ${{ matrix.service }}
-        run: mvn clean verify -pl ${{ matrix.service }} -am -B -T 2
+        run: mvn clean verify -pl ${{ matrix.service }} -B
         env:
-          DB_URL: jdbc:postgresql://localhost:5432/stockiq_test
-          DB_USER: stockiq
-          DB_PASSWORD: stockiq_test
-          REDIS_HOST: localhost
-          EUREKA_URI: http://localhost:8761/eureka
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/stockiq_test
+          SPRING_DATASOURCE_USERNAME: stockiq
+          SPRING_DATASOURCE_PASSWORD: stockiq_test
+          SPRING_DATA_REDIS_HOST: localhost
+          EUREKA_CLIENT_ENABLED: "false"
           JWT_SECRET: test-secret-key-minimum-32-characters-long
 
       - name: Upload test reports
@@ -81,8 +84,10 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
           cache: maven
+      - name: Install parent POM
+        run: mvn install -N -B -q
       - name: OWASP Dependency Check
-        run: mvn org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=9 -B -pl auth-service,portfolio-service
+        run: mvn org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=9 -B -pl auth-service
         continue-on-error: true
 
   docker-push:
@@ -91,6 +96,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     strategy:
+      fail-fast: false
       matrix:
         service: [api-gateway, auth-service, market-data-service, portfolio-service, notification-service]
     steps:
